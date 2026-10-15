@@ -23,8 +23,6 @@
     user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
-
-  /* 主区域：左侧表盘+时间+按钮，右侧问答 */
   .main {
     display: flex;
     align-items: center;
@@ -34,16 +32,12 @@
     width: 100%;
     max-width: 1400px;
   }
-
-  /* 左侧列：表盘、数字时间、日期、按钮 */
   .left-panel {
     display: flex;
     flex-direction: column;
     align-items: center;
     flex: 0 0 auto;
   }
-
-  /* ---------- 表盘 ---------- */
   .stage {
     aspect-ratio: 1 / 1;
     height: min(68vh, 55vw, 700px);
@@ -54,8 +48,12 @@
     font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
                  system-ui, -apple-system, "Segoe UI", sans-serif;
   }
-
-  /* ---------- 数字时间 ---------- */
+  #hourHand, #minuteHand {
+    cursor: grab;
+  }
+  #hourHand:active, #minuteHand:active {
+    cursor: grabbing;
+  }
   .readout {
     margin-top: clamp(6px, 1.4vh, 18px);
     text-align: center;
@@ -64,7 +62,6 @@
     font-size: clamp(26px, 4.8vh, 58px);
     font-weight: 800;
     letter-spacing: 0.06em;
-    font-variant-numeric: tabular-nums;
     color: #16305c;
     line-height: 1;
   }
@@ -75,8 +72,6 @@
     color: #61739a;
     letter-spacing: 0.06em;
   }
-
-  /* ---------- 按钮 ---------- */
   .controls {
     margin-top: clamp(8px, 1.6vh, 18px);
     display: flex;
@@ -98,8 +93,6 @@
   }
   .controls button:hover { background: #eef4ff; border-color: #8aa8dd; }
   .controls button:active { transform: scale(0.95); }
-
-  /* ---------- 英文问答面板 ---------- */
   .question-panel {
     flex: 0 0 auto;
     text-align: left;
@@ -118,12 +111,13 @@
     font-weight: 800;
     letter-spacing: 0.02em;
   }
+  .answer.hidden {
+    visibility: hidden;
+  }
 </style>
 </head>
 <body>
-
 <div class="main">
-  <!-- 左侧：表盘 + 数字时间 + 按钮 -->
   <div class="left-panel">
     <div class="stage">
       <svg id="clock" viewBox="0 0 1000 1000" role="img" aria-label="时钟表盘">
@@ -138,76 +132,57 @@
             <stop offset="100%" stop-color="#1b2f60"/>
           </linearGradient>
         </defs>
-
-        <!-- 外圈 + 表盘 -->
         <circle cx="500" cy="500" r="484" fill="url(#rimGrad)"/>
         <circle cx="500" cy="500" r="458" fill="url(#faceGrad)"/>
         <circle cx="500" cy="500" r="458" fill="none" stroke="#c6d5ef" stroke-width="2"/>
-
-        <!-- 刻度 -->
         <g id="ticks"></g>
-
-        <!-- 两个小卡通人物 -->
         <image id="pinkFriend" href="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                x="300" y="540" width="150" height="150" opacity="0.95" />
         <image id="blueFriend" href="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                x="550" y="540" width="150" height="150" opacity="0.95" />
-
-        <!-- 数字 -->
         <g id="numbers"></g>
-
-        <!-- 指针（只有时针和分针） -->
         <g id="hands">
           <line id="hourHand"   x1="500" y1="545" x2="500" y2="270"
                 stroke="#e63946" stroke-width="50" stroke-linecap="round"/>
           <line id="minuteHand" x1="500" y1="555" x2="500" y2="165"
                 stroke="#2563eb" stroke-width="34" stroke-linecap="round"/>
         </g>
-
-        <!-- 中心轴 -->
         <circle cx="500" cy="500" r="30" fill="#1b2a49"/>
         <circle cx="500" cy="500" r="12" fill="#ffffff"/>
       </svg>
     </div>
-
     <div class="readout">
       <div class="digital">
         <span id="d-hm">--:--</span>
       </div>
       <div class="date" id="date">—</div>
     </div>
-
     <div class="controls">
       <button id="btnHour">整点</button>
       <button id="btnHalf">半点</button>
       <button id="btnRandom">随机</button>
+      <button id="btnLive">当前时间</button>
+      <button id="btnShowAnswer">显示答案</button>
     </div>
   </div>
-
-  <!-- 右侧英文问答面板 -->
   <div class="question-panel">
     <div class="question">What time is it?</div>
-    <div class="answer">It's __________</div>
+    <div class="answer hidden" id="answer">It's __________</div>
   </div>
 </div>
-
 <script>
 (function () {
   'use strict';
-
   var SVG_NS = 'http://www.w3.org/2000/svg';
   var CX = 500, CY = 500;
 
-  /* ---------- 1. 生成刻度 ---------- */
   var ticks = document.getElementById('ticks');
   var tickFrag = document.createDocumentFragment();
-
   for (var i = 0; i < 60; i++) {
     var ang = (i * 6) * Math.PI / 180;
     var big = (i % 5 === 0);
     var r1 = big ? 400 : 414;
     var r2 = 434;
-
     var line = document.createElementNS(SVG_NS, 'line');
     line.setAttribute('x1', (CX + r1 * Math.sin(ang)).toFixed(2));
     line.setAttribute('y1', (CY - r1 * Math.cos(ang)).toFixed(2));
@@ -220,14 +195,11 @@
   }
   ticks.appendChild(tickFrag);
 
-  /* ---------- 2. 生成数字 ---------- */
   var numbers = document.getElementById('numbers');
   var numFrag = document.createDocumentFragment();
-
   for (var n = 1; n <= 12; n++) {
     var a = (n * 30) * Math.PI / 180;
     var r = 338;
-
     var t = document.createElementNS(SVG_NS, 'text');
     t.setAttribute('x', (CX + r * Math.sin(a)).toFixed(2));
     t.setAttribute('y', (CY - r * Math.cos(a)).toFixed(2));
@@ -241,10 +213,8 @@
   }
   numbers.appendChild(numFrag);
 
-  /* ---------- 3. 指针（只有时针和分针） ---------- */
   var hourHand   = document.getElementById('hourHand');
   var minuteHand = document.getElementById('minuteHand');
-
   function setAngle(el, deg) {
     var v = deg.toFixed(2);
     if (el.getAttribute('data-a') !== v) {
@@ -253,12 +223,37 @@
     }
   }
 
-  /* ---------- 4. 数字显示 ---------- */
   var dHM    = document.getElementById('d-hm');
   var dateEl = document.getElementById('date');
+  var answerEl = document.getElementById('answer');
+  var btnShowAnswer = document.getElementById('btnShowAnswer');
   var WEEK   = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+  var showAnswerFlag = false;
 
-  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  btnShowAnswer.onclick = function(){
+    showAnswerFlag = !showAnswerFlag;
+    if(showAnswerFlag){
+      answerEl.classList.remove('hidden');
+      btnShowAnswer.textContent = "隐藏答案";
+    }else{
+      answerEl.classList.add('hidden');
+      btnShowAnswer.textContent = "显示答案";
+    }
+  };
+
+  function padMin(n) {
+    return n < 10 ? '0' + n : '' + n;
+  }
+
+  function timeToEnglish(h24, mi){
+    var h12 = h24 % 12;
+    if(h12 === 0) h12 = 12;
+    if(mi === 0){
+      return `It's ${h12} o'clock.`;
+    }else{
+      return `It's ${h12}:${padMin(mi)}.`;
+    }
+  }
 
   var frozenTime = null;
 
@@ -266,27 +261,31 @@
     var now = frozenTime || new Date();
     var h24 = now.getHours();
     var mi  = now.getMinutes();
-
     var h12 = h24 % 12;
+    if(h12 === 0) h12 = 12;
     var hourDeg   = (h12 + mi / 60) * 30;
     var minuteDeg = mi * 6;
-
     setAngle(hourHand, hourDeg);
     setAngle(minuteHand, minuteDeg);
 
-    dHM.textContent = pad(h24) + ':' + pad(mi);
-    dateEl.textContent = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' +
-                         now.getDate() + '日  ' + WEEK[now.getDay()];
+    // 左下角数字面板改为12小时制
+    var display12h = h24 % 12;
+    if(display12h === 0) display12h = 12;
+    dHM.textContent = display12h + ':' + padMin(mi);
+
+    var realToday = new Date();
+    dateEl.textContent = realToday.getFullYear() + '年' + (realToday.getMonth() + 1) + '月' +
+                         realToday.getDate() + '日  ' + WEEK[realToday.getDay()];
+
+    answerEl.textContent = timeToEnglish(h24, mi);
   }
 
   render();
   setInterval(render, 1000);
-
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) render();
   });
 
-  /* ---------- 5. 随机时间按钮 ---------- */
   function getRandomHourly() {
     var d = new Date();
     d.setHours(Math.floor(Math.random() * 24));
@@ -294,7 +293,6 @@
     d.setSeconds(0);
     return d;
   }
-
   function getRandomHalfHourly() {
     var d = new Date();
     d.setHours(Math.floor(Math.random() * 24));
@@ -302,7 +300,6 @@
     d.setSeconds(0);
     return d;
   }
-
   function getRandomRandom() {
     var d = new Date();
     d.setHours(Math.floor(Math.random() * 24));
@@ -315,31 +312,85 @@
     frozenTime = getRandomHourly();
     render();
   });
-
   document.getElementById('btnHalf').addEventListener('click', function () {
     frozenTime = getRandomHalfHourly();
     render();
   });
-
   document.getElementById('btnRandom').addEventListener('click', function () {
     frozenTime = getRandomRandom();
     render();
   });
+  document.getElementById('btnLive').addEventListener('click', function () {
+    frozenTime = null;
+    render();
+  });
 
-  /* ---------- 6. 自动读取之前保存的小人图片 ---------- */
+  var dragging = null;
+  var svgEl = document.getElementById('clock');
+
+  function getPointerAngle(evt){
+    var rect = svgEl.getBoundingClientRect();
+    var clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+    var clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+    var x = clientX - rect.left;
+    var y = clientY - rect.top;
+    var cxSvg = rect.width / 2;
+    var cySvg = rect.height / 2;
+    var dx = x - cxSvg;
+    var dy = y - cySvg;
+    var rad = Math.atan2(dx, -dy);
+    var deg = rad * 180 / Math.PI;
+    if(deg < 0) deg += 360;
+    return deg;
+  }
+
+  function onDragStart(type, evt){
+    evt.preventDefault();
+    dragging = type;
+    frozenTime = frozenTime || new Date();
+  }
+  function onDragMove(evt){
+    if(!dragging) return;
+    evt.preventDefault();
+    var deg = getPointerAngle(evt);
+    if(dragging === 'minute'){
+      var minStep = Math.round(deg / 30) * 5;
+      frozenTime.setMinutes(minStep);
+      frozenTime.setSeconds(0);
+    }else if(dragging === 'hour'){
+      var hour12 = Math.round(deg / 30);
+      if(hour12 === 12) hour12 = 0;
+      frozenTime.setHours(hour12);
+      frozenTime.setSeconds(0);
+    }
+    render();
+  }
+  function onDragEnd(){
+    dragging = null;
+  }
+
+  hourHand.addEventListener('mousedown', (e)=>onDragStart('hour', e));
+  minuteHand.addEventListener('mousedown', (e)=>onDragStart('minute', e));
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+
+  hourHand.addEventListener('touchstart', (e)=>onDragStart('hour', e));
+  minuteHand.addEventListener('touchstart', (e)=>onDragStart('minute', e));
+  document.addEventListener('touchmove', onDragMove, {passive:false});
+  document.addEventListener('touchend', onDragEnd);
+  document.addEventListener('touchcancel', onDragEnd);
+
   var pinkImg = document.getElementById('pinkFriend');
   var blueImg = document.getElementById('blueFriend');
-
   try {
     var pinkData = localStorage.getItem('clockPinkFriend');
     var blueData = localStorage.getItem('clockBlueFriend');
     if (pinkData) pinkImg.setAttribute('href', pinkData);
     if (blueData) blueImg.setAttribute('href', blueData);
   } catch (e) {
-    // localStorage 不可用时保持透明占位
   }
-
 })();
 </script>
 </body>
 </html>
+<!-- （注：内容由AI生成） -->
